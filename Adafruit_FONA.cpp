@@ -1232,10 +1232,10 @@ boolean Adafruit_FONA::enableGPRS(boolean onoff) {
 }
 
 /********************************* SIM800 2G HTTP FUNCTION *********************************/
-boolean Adafruit_FONA::postData(postData(const char *deviceID, float temperature, int battLevel) {
+boolean Adafruit_FONA::postData(const char *deviceID, float temperature, int battLevel) {
   // Need to press "G" to open socket/enable GPRS before using this function
 
-  char request[100];
+  char URL[100];
   char tempBuff[16];
   char battLevelBuff[16];
 
