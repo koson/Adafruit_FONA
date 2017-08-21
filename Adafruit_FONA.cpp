@@ -157,7 +157,7 @@ boolean Adafruit_FONA::enableRTC(uint8_t i) {
 }
 
 
-/********* BATTERY & ADC ********************************************/
+/********* POWER, BATTERY & ADC ********************************************/
 
 /* returns value in mV (uint16_t) */
 boolean Adafruit_FONA::getBattVoltage(uint16_t *v) {
@@ -180,6 +180,22 @@ boolean Adafruit_FONA::getBattPercent(uint16_t *p) {
 
 boolean Adafruit_FONA::getADCVoltage(uint16_t *v) {
   return sendParseReply(F("AT+CADC?"), F("+CADC: 1,"), v);
+}
+
+/* Powers down the SIM800 */
+boolean Adafruit_FONA::powerDown(void) {
+  if (! sendCheckReply(F("AT+CPOWD=1"), ok_reply)) // Normal power off
+    return false;
+
+  return true;
+}
+
+/* Powers down the SIM5320 */
+boolean Adafruit_FONA_3G::powerDown(void) {
+  if (! sendCheckReply(F("AT+CPOF"), ok_reply))
+    return false;
+
+  return true;
 }
 
 /********* SIM ***********************************************************/
@@ -481,7 +497,7 @@ int8_t Adafruit_FONA::getNumSMS(void) {
 // Reading SMS's is a bit involved so we don't use helpers that may cause delays or debug
 // printouts!
 boolean Adafruit_FONA::readSMS(uint8_t i, char *smsbuff,
-			       uint16_t maxlen, uint16_t *readlen) {
+             uint16_t maxlen, uint16_t *readlen) {
   // text mode
   if (! sendCheckReply(F("AT+CMGF=1"), ok_reply)) return false;
 
@@ -733,18 +749,18 @@ boolean Adafruit_FONA::enableGPS(boolean onoff) {
   if (onoff && !state) {
     if (_type == FONA808_V2) {
       if (! sendCheckReply(F("AT+CGNSPWR=1"), ok_reply))  // try GNS command
-	return false;
+  return false;
     } else {
       if (! sendCheckReply(F("AT+CGPSPWR=1"), ok_reply))
-	return false;
+  return false;
     }
   } else if (!onoff && state) {
     if (_type == FONA808_V2) {
       if (! sendCheckReply(F("AT+CGNSPWR=0"), ok_reply)) // try GNS command
-	return false;
+  return false;
     } else {
       if (! sendCheckReply(F("AT+CGPSPWR=0"), ok_reply))
-	return false;
+  return false;
     }
   }
   return true;
@@ -1140,7 +1156,7 @@ boolean Adafruit_FONA::enableGPRS(boolean onoff) {
 
     // set bearer profile! connection type GPRS
     if (! sendCheckReply(F("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\""),
-			   ok_reply, 10000))
+         ok_reply, 10000))
       return false;
 
     // set bearer profile access point name
@@ -1155,12 +1171,12 @@ boolean Adafruit_FONA::enableGPRS(boolean onoff) {
       mySerial->print(F("AT+CSTT=\""));
       mySerial->print(apn);
       if (apnusername) {
-	mySerial->print("\",\"");
-	mySerial->print(apnusername);
+  mySerial->print("\",\"");
+  mySerial->print(apnusername);
       }
       if (apnpassword) {
-	mySerial->print("\",\"");
-	mySerial->print(apnpassword);
+  mySerial->print("\",\"");
+  mySerial->print(apnpassword);
       }
       mySerial->println("\"");
 
@@ -1168,12 +1184,12 @@ boolean Adafruit_FONA::enableGPRS(boolean onoff) {
       DEBUG_PRINT(apn); 
       
       if (apnusername) {
-	DEBUG_PRINT("\",\"");
-	DEBUG_PRINT(apnusername); 
+  DEBUG_PRINT("\",\"");
+  DEBUG_PRINT(apnusername); 
       }
       if (apnpassword) {
-	DEBUG_PRINT("\",\"");
-	DEBUG_PRINT(apnpassword); 
+  DEBUG_PRINT("\",\"");
+  DEBUG_PRINT(apnpassword); 
       }
       DEBUG_PRINTLN("\"");
       
@@ -1216,6 +1232,53 @@ boolean Adafruit_FONA::enableGPRS(boolean onoff) {
   return true;
 }
 
+/********************************* SIM800 2G HTTP FUNCTION *********************************/
+boolean Adafruit_FONA::postData(postData(const char *deviceID, float temperature, int battLevel) {
+  // Need to press "G" to open socket/enable GPRS before using this function
+
+  char request[100];
+  char tempBuff[16];
+  char battLevelBuff[16];
+
+  dtostrf(temperature, 2, 2, tempBuff); // float_val, min_width, digits_after_decimal, char_buffer
+  // Serial.print("tempBuff = "); Serial.println(tempBuff); // Debug
+
+  dtostrf(battLevel, 1, 0, battLevelBuff); // Battery level percentage
+  // Serial.print("battLevelBuff = "); Serial.println(battLevelBuff); // Debug
+
+  sprintf(URL, "dweet.io/dweet/for/%s?temp=%s&batt%d", deviceID, tempBuff, battLevel);
+  // Serial.print("URL = "); Serial.println(URL); // Debug
+
+  // Initialize HTTP service
+  if (! sendCheckReply(F("AT+HTTPINIT"), ok_reply, 10000))
+    return false;
+
+  // Set HTTP parameters
+  if (! sendCheckReply(F("AT+HTTPPARA=\"CID\",1"), ok_reply, 10000))
+    return false;
+
+  // Specify URL
+  char auxStr[64];
+  sprintf(auxStr, "AT+HTTPPARA=\"URL\",\"%s\"", URL);
+  if (! sendCheckReply(auxStr, ok_reply, 10000))
+    return false;
+
+  // Specify GET request
+  if (! sendCheckReply(F("AT+HTTPACTION=0"), ok_reply, 10000))
+    return false;
+
+  // Read HTTP server response
+  if (! sendCheckReply(F("AT+HTTPREAD"), "+HTTPREAD:DATA,", 10000))
+    return false;
+
+  // Terminate HTTP service
+  if (! sendCheckReply(F("AT+HTTPTERM"), ok_reply, 10000))
+    return false;
+
+  return true;
+}
+/********************************* END OF 2G HTTP FUNCTION *********************************/
+
 boolean Adafruit_FONA_3G::enableGPRS(boolean onoff) {
 
   if (onoff) {
@@ -1234,26 +1297,26 @@ boolean Adafruit_FONA_3G::enableGPRS(boolean onoff) {
 
       // set username/password
       if (apnusername) {
-	char authstring[100] = "AT+CGAUTH=1,1,\"";
-	char *strp = authstring + strlen(authstring);
-	prog_char_strcpy(strp, (prog_char *)apnusername);
-	strp+=prog_char_strlen((prog_char *)apnusername);
-	strp[0] = '\"';
-	strp++;
-	strp[0] = 0;
+  char authstring[100] = "AT+CGAUTH=1,1,\"";
+  char *strp = authstring + strlen(authstring);
+  prog_char_strcpy(strp, (prog_char *)apnusername);
+  strp+=prog_char_strlen((prog_char *)apnusername);
+  strp[0] = '\"';
+  strp++;
+  strp[0] = 0;
 
-	if (apnpassword) {
-	  strp[0] = ','; strp++;
-	  strp[0] = '\"'; strp++;
-	  prog_char_strcpy(strp, (prog_char *)apnpassword);
-	  strp+=prog_char_strlen((prog_char *)apnpassword);
-	  strp[0] = '\"';
-	  strp++;
-	  strp[0] = 0;
-	}
+  if (apnpassword) {
+    strp[0] = ','; strp++;
+    strp[0] = '\"'; strp++;
+    prog_char_strcpy(strp, (prog_char *)apnpassword);
+    strp+=prog_char_strlen((prog_char *)apnpassword);
+    strp[0] = '\"';
+    strp++;
+    strp[0] = 0;
+  }
 
-	if (! sendCheckReply(authstring, ok_reply, 10000))
-	  return false;
+  if (! sendCheckReply(authstring, ok_reply, 10000))
+    return false;
       }
     }
 
@@ -1275,6 +1338,67 @@ boolean Adafruit_FONA_3G::enableGPRS(boolean onoff) {
 
   return true;
 }
+
+/********************************* 3G HTTPS FUNCTION *********************************/
+boolean Adafruit_FONA_3G::postData(const char *deviceID, float temperature, int battLevel) {
+  // Need to press "G" to open socket/enable GPRS before using this function
+
+  char request[100];
+  char tempBuff[16];
+  char battLevelBuff[16];
+
+  dtostrf(temperature, 2, 2, tempBuff); // float_val, min_width, digits_after_decimal, char_buffer
+  // Serial.print("tempBuff = "); Serial.println(tempBuff); // Debug
+
+  dtostrf(battLevel, 1, 0, battLevelBuff); // Battery level percentage
+  // Serial.print("battLevelBuff = "); Serial.println(battLevelBuff); // Debug
+
+  sprintf(request, "GET /dweet/for/%s?temp=%s&batt=%d HTTP/1.1\r\nHost: dweet.io\r\nContent-Length: 0\r\n\r\n", deviceID, tempBuff, battLevel);
+  // sprintf(request, "GET /dweet/for/%s?temp=%s HTTP/1.1\r\nHost: dweet.io\r\nContent-Length: 0\r\n\r\n", deviceID, temperature);
+  // Serial.print("request = "); Serial.println(request); // Debug
+
+  // Start HTTPS stack
+  if (! sendCheckReply(F("AT+CHTTPSSTART"), ok_reply, 10000))
+    return false;
+
+  // Connect to HTTPS server
+  if (! sendCheckReply(F("AT+CHTTPSOPSE=\"www.dweet.io\",443,2"), ok_reply, 10000)) // Use port 443 and HTTPS
+    return false;
+
+  // Send data to server (takes about 10s to send to dweet.io)
+  char auxStr[64];
+  sprintf(auxStr, "AT+CHTTPSSEND=%i", strlen(request));
+
+  if (! sendCheckReply(auxStr, ">", 10000))
+    return false;
+
+  if (! sendCheckReply(request, ok_reply, 10000))
+    return false;
+
+  // Request URL
+  if (! sendCheckReply(F("AT+CHTTPSSEND"), ok_reply, 10000))
+    return false;
+
+//   Receive HTTPS response. Note: this didn't work for me
+//   if (! sendCheckReply(F("AT+HTTPSSEND?"), "+CHTTPSSEND: ", 10000)) // Receive HTTPS response.
+//     return false;
+//   if (! sendCheckReply(F("AT+CHTTPSRECV=1"), "+CHTTPSRECV: DATA,", 10000)) // Receive HTTPS response.
+//     return false;
+// if (! sendCheckReply(F("AT+CHTTPSRECV?"), "+CHTTPSRECV: LEN,", 10000)) // Receive HTTPS response.
+//     return false;
+
+//   Close HTTP/HTTPS Session
+//   if (! sendCheckReply(F("AT+CHTTPSCLSE"), ok_reply, 10000))
+//     return false;
+
+//   Stop HTTP/HTTPS stack
+//   if (! sendCheckReply(F("AT+CHTTPSSTOP"), ok_reply, 10000))
+//     return false;
+
+  return true;
+}
+
+/********************************* END OF 3G HTTPS FUNCTION *********************************/
 
 uint8_t Adafruit_FONA::GPRSstate(void) {
   uint16_t state;
@@ -1581,7 +1705,7 @@ boolean Adafruit_FONA::HTTP_GET_start(char *url,
 
 /*
 boolean Adafruit_FONA_3G::HTTP_GET_start(char *ipaddr, char *path, uint16_t port
-				      uint16_t *status, uint16_t *datalen){
+              uint16_t *status, uint16_t *datalen){
   char send[100] = "AT+CHTTPACT=\"";
   char *sendp = send + strlen(send);
   memset(sendp, 0, 100 - strlen(send));
@@ -1899,7 +2023,7 @@ uint8_t Adafruit_FONA::getReplyQuoted(FONAFlashStringPtr prefix, FONAFlashString
 
 boolean Adafruit_FONA::sendCheckReply(char *send, char *reply, uint16_t timeout) {
   if (! getReply(send, timeout) )
-	  return false;
+    return false;
 /*
   for (uint8_t i=0; i<strlen(replybuffer); i++) {
   DEBUG_PRINT(replybuffer[i], HEX); DEBUG_PRINT(" ");
@@ -1914,15 +2038,15 @@ boolean Adafruit_FONA::sendCheckReply(char *send, char *reply, uint16_t timeout)
 }
 
 boolean Adafruit_FONA::sendCheckReply(FONAFlashStringPtr send, FONAFlashStringPtr reply, uint16_t timeout) {
-	if (! getReply(send, timeout) )
-		return false;
+  if (! getReply(send, timeout) )
+    return false;
 
   return (prog_char_strcmp(replybuffer, (prog_char*)reply) == 0);
 }
 
 boolean Adafruit_FONA::sendCheckReply(char* send, FONAFlashStringPtr reply, uint16_t timeout) {
   if (! getReply(send, timeout) )
-	  return false;
+    return false;
   return (prog_char_strcmp(replybuffer, (prog_char*)reply) == 0);
 }
 
@@ -2035,8 +2159,8 @@ boolean Adafruit_FONA::parseReplyQuoted(FONAFlashStringPtr toreply,
 }
 
 boolean Adafruit_FONA::sendParseReply(FONAFlashStringPtr tosend,
-				      FONAFlashStringPtr toreply,
-				      uint16_t *v, char divider, uint8_t index) {
+              FONAFlashStringPtr toreply,
+              uint16_t *v, char divider, uint8_t index) {
   getReply(tosend);
 
   if (! parseReply(toreply, v, divider, index)) return false;
@@ -2050,8 +2174,8 @@ boolean Adafruit_FONA::sendParseReply(FONAFlashStringPtr tosend,
 // needed for CBC and others
 
 boolean Adafruit_FONA_3G::sendParseReply(FONAFlashStringPtr tosend,
-				      FONAFlashStringPtr toreply,
-				      float *f, char divider, uint8_t index) {
+              FONAFlashStringPtr toreply,
+              float *f, char divider, uint8_t index) {
   getReply(tosend);
 
   if (! parseReply(toreply, f, divider, index)) return false;
