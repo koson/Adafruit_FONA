@@ -1232,20 +1232,20 @@ boolean Adafruit_FONA::enableGPRS(boolean onoff) {
 }
 
 /********************************* SIM800 2G HTTP FUNCTION *********************************/
-boolean Adafruit_FONA::postData(const char *deviceID, float temperature, int battLevel) {
-  // Need to press "G" to open socket/enable GPRS before using this function
+boolean Adafruit_FONA::postData(const char *deviceID, float number, int battLevel) {
+  // Need to open socket/enable GPRS before using this function
 
   char URL[100];
-  char tempBuff[16];
+  char numBuff[16];
   char battLevelBuff[16];
 
-  dtostrf(temperature, 2, 2, tempBuff); // float_val, min_width, digits_after_decimal, char_buffer
-  // Serial.print("tempBuff = "); Serial.println(tempBuff); // Debug
+  dtostrf(number, 2, 2, numBuff); // float_val, min_width, digits_after_decimal, char_buffer
+  // Serial.print("numBuff = "); Serial.println(numBuff); // Debug
 
   dtostrf(battLevel, 1, 0, battLevelBuff); // Battery level percentage
   // Serial.print("battLevelBuff = "); Serial.println(battLevelBuff); // Debug
 
-  sprintf(URL, "dweet.io/dweet/for/%s?temp=%s&batt%d", deviceID, tempBuff, battLevel);
+  sprintf(URL, "dweet.io/dweet/for/%s?temp=%s&batt%s", deviceID, numBuff, battLevel);
   // Serial.print("URL = "); Serial.println(URL); // Debug
 
   // Initialize HTTP service
@@ -1340,20 +1340,20 @@ boolean Adafruit_FONA_3G::enableGPRS(boolean onoff) {
 }
 
 /********************************* 3G HTTPS FUNCTION *********************************/
-boolean Adafruit_FONA_3G::postData(const char *deviceID, float temperature, int battLevel) {
-  // Need to press "G" to open socket/enable GPRS before using this function
+boolean Adafruit_FONA_3G::postData(const char *deviceID, float number, int battLevel) {
+  // Need to open socket/enable GPRS before using this function
 
   char request[100];
-  char tempBuff[16];
+  char numBuff[16];
   char battLevelBuff[16];
 
-  dtostrf(temperature, 2, 2, tempBuff); // float_val, min_width, digits_after_decimal, char_buffer
-  // Serial.print("tempBuff = "); Serial.println(tempBuff); // Debug
+  dtostrf(number, 2, 2, numBuff); // float_val, min_width, digits_after_decimal, char_buffer
+  // Serial.print("numBuff = "); Serial.println(numBuff); // Debug
 
   dtostrf(battLevel, 1, 0, battLevelBuff); // Battery level percentage
   // Serial.print("battLevelBuff = "); Serial.println(battLevelBuff); // Debug
 
-  sprintf(request, "GET /dweet/for/%s?temp=%s&batt=%d HTTP/1.1\r\nHost: dweet.io\r\nContent-Length: 0\r\n\r\n", deviceID, tempBuff, battLevel);
+  sprintf(request, "GET /dweet/for/%s?temp=%s&batt=%s HTTP/1.1\r\nHost: dweet.io\r\nContent-Length: 0\r\n\r\n", deviceID, numBuff, battLevel);
   // sprintf(request, "GET /dweet/for/%s?temp=%s HTTP/1.1\r\nHost: dweet.io\r\nContent-Length: 0\r\n\r\n", deviceID, temperature);
   // Serial.print("request = "); Serial.println(request); // Debug
 
@@ -1387,13 +1387,13 @@ boolean Adafruit_FONA_3G::postData(const char *deviceID, float temperature, int 
 // if (! sendCheckReply(F("AT+CHTTPSRECV?"), "+CHTTPSRECV: LEN,", 10000)) // Receive HTTPS response.
 //     return false;
 
-//   Close HTTP/HTTPS Session
-//   if (! sendCheckReply(F("AT+CHTTPSCLSE"), ok_reply, 10000))
-//     return false;
+  // Close HTTP/HTTPS Session
+  if (! sendCheckReply(F("AT+CHTTPSCLSE"), ok_reply, 10000))
+    return false;
 
-//   Stop HTTP/HTTPS stack
-//   if (! sendCheckReply(F("AT+CHTTPSSTOP"), ok_reply, 10000))
-//     return false;
+  // Stop HTTP/HTTPS stack
+  if (! sendCheckReply(F("AT+CHTTPSSTOP"), ok_reply, 10000))
+    return false;
 
   return true;
 }
