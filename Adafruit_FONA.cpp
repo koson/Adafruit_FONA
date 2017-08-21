@@ -1245,7 +1245,7 @@ boolean Adafruit_FONA::postData(const char *deviceID, float number, int battLeve
   dtostrf(battLevel, 1, 0, battLevelBuff); // Battery level percentage
   // Serial.print("battLevelBuff = "); Serial.println(battLevelBuff); // Debug
 
-  sprintf(URL, "dweet.io/dweet/for/%s?temp=%s&batt%s", deviceID, numBuff, battLevel);
+  sprintf(URL, "dweet.io/dweet/for/%s?temp=%s&batt=%s", deviceID, numBuff, battLevel);
   // Serial.print("URL = "); Serial.println(URL); // Debug
 
   // Initialize HTTP service
