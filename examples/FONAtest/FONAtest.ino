@@ -50,8 +50,8 @@ Adafruit_FONA fona = Adafruit_FONA(FONA_RST);
 //Adafruit_FONA_3G fona = Adafruit_FONA_3G(FONA_RST);
 
 uint8_t readline(char *buff, uint8_t maxbuff, uint16_t timeout = 0);
-
 uint8_t type;
+char imei[16] = {0}; // MUST use a 16 character buffer for IMEI!
 
 void setup() {
   while (!Serial);
@@ -86,7 +86,6 @@ void setup() {
   }
   
   // Print module IMEI number.
-  char imei[16] = {0}; // MUST use a 16 character buffer for IMEI!
   uint8_t imeiLen = fona.getIMEI(imei);
   if (imeiLen > 0) {
     Serial.print("Module IMEI: "); Serial.println(imei);
@@ -157,6 +156,8 @@ void printMenu(void) {
   Serial.println(F("[l] Query GSMLOC (GPRS)"));
   Serial.println(F("[w] Read webpage (GPRS)"));
   Serial.println(F("[W] Post to website (GPRS)"));
+  // The following option below posts dummy data to dweet.io for demonstration purposes only. See the 
+  // FONA_IoT_example sketch for an actual application of this function.
   Serial.println(F("[2] Post to dweet.io using 2G or 3G (GPRS)")); // 2G or 3G determined automatically based on hardware type
 
   // GPS
@@ -796,7 +797,9 @@ void loop() {
        }
     case '2': {
         // Post data to website via 2G or 3G (determined automatically by hardware type)
-        if (!fona.postData(deviceID, temperature, battLevel))
+        float temperature = analogRead(A0)*1.23; // Change this to suit your needs
+        uint16_t battLevel = 87; // Just for testing
+        if (!fona.postData(imei, temperature, battLevel))
           Serial.println(F("Failed to post data to website..."));
           break;
       }
