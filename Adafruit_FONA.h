@@ -88,6 +88,7 @@ class Adafruit_FONA : public FONAStreamType {
   boolean getADCVoltage(uint16_t *v);
   boolean getBattPercent(uint16_t *p);
   boolean getBattVoltage(uint16_t *v);
+  boolean powerDown(void);
 
   // SIM query
   uint8_t unlockSIM(char *pin);
@@ -134,6 +135,7 @@ class Adafruit_FONA : public FONAStreamType {
   boolean getGSMLoc(uint16_t *replycode, char *buff, uint16_t maxlen);
   boolean getGSMLoc(float *lat, float *lon);
   void setGPRSNetworkSettings(FONAFlashStringPtr apn, FONAFlashStringPtr username=0, FONAFlashStringPtr password=0);
+  boolean postData(const char *deviceID, float temperature, int battLevel);
 
   // GPS handling
   boolean enableGPS(boolean onoff);
@@ -250,6 +252,8 @@ class Adafruit_FONA_3G : public Adafruit_FONA {
     boolean pickUp(void);
     boolean enableGPRS(boolean onoff);
     boolean enableGPS(boolean onoff);
+    boolean postData(const char *deviceID, float temperature, int battLevel);
+    boolean powerDown(void);
 
  protected:
     boolean parseReply(FONAFlashStringPtr toreply,
