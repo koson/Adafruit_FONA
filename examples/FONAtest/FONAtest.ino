@@ -46,7 +46,7 @@ SoftwareSerial *fonaSerial = &fonaSS;
 
 // Use this for FONA 800 and 808s
 Adafruit_FONA fona = Adafruit_FONA(FONA_RST);
-// Use this one for FONA 3G
+// Use this one for FONA 3G. Also run the "FONA3G_setBaud" example or it may not work.
 //Adafruit_FONA_3G fona = Adafruit_FONA_3G(FONA_RST);
 
 uint8_t readline(char *buff, uint8_t maxbuff, uint16_t timeout = 0);
@@ -98,6 +98,8 @@ void setup() {
   // and password values.  Username and password are optional and
   // can be removed, but APN is required.
   //fona.setGPRSNetworkSettings(F("your APN"), F("your username"), F("your password"));
+  //fona.setGPRSNetworkSettings(F("phone"); // This worked fine for a standard AT&T 3G SIM card (US)
+  //fona.setGPRSNetworkSettings(F("m2m.com.attz")); // Might need to use this for AT&T IoT SIM card (data only, US)
 
   // Optionally configure HTTP gets to follow redirects over SSL.
   // Default is not to follow SSL redirects, however if you uncomment
@@ -155,6 +157,7 @@ void printMenu(void) {
   Serial.println(F("[l] Query GSMLOC (GPRS)"));
   Serial.println(F("[w] Read webpage (GPRS)"));
   Serial.println(F("[W] Post to website (GPRS)"));
+  Serial.println(F("[2] Post to dweet.io using 2G or 3G (GPRS)")); // 2G or 3G determined automatically based on hardware type
 
   // GPS
   if ((type == FONA3G_A) || (type == FONA3G_E) || (type == FONA808_V1) || (type == FONA808_V2)) {
@@ -790,6 +793,12 @@ void loop() {
         Serial.println(F("\n****"));
         fona.HTTP_POST_end();
         break;
+       }
+    case '2': {
+        // Post data to website via 2G or 3G (determined automatically by hardware type)
+        if (!fona.postData(deviceID, temperature, battLevel))
+          Serial.println(F("Failed to post data to website..."));
+          break;
       }
     /*****************************************/
 
