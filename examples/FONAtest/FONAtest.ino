@@ -27,9 +27,16 @@ the commented section below at the end of the setup() function.
 */
 #include "Adafruit_FONA.h"
 
+// Default
 #define FONA_RX 2
 #define FONA_TX 3
 #define FONA_RST 4
+
+// For FONA800 specifically
+#define FONA_RX  9
+#define FONA_TX  8
+#define FONA_RST 4
+#define FONA_RI  7
 
 // this is a large buffer for replies
 char replybuffer[255];
@@ -798,8 +805,22 @@ void loop() {
     case '2': {
         // Post data to website via 2G or 3G (determined automatically by hardware type)
         float temperature = analogRead(A0)*1.23; // Change this to suit your needs
-        uint16_t battLevel = 87; // Just for testing
-        if (!fona.postData(imei, temperature, battLevel))
+        uint16_t battLevel = 87; // Just for testing. Use the read battery function instead
+
+        // Construct URL and post the data to the web API
+        // Create char buffers for the floating point numbers for sprintf
+        char URL[150]; // Make sure this buffer is long enough for your request URL
+        char tempBuff[16];
+        char battLevelBuff[16];
+      
+        // Format the floating point numbers as needed
+        dtostrf(temperature, 1, 2, tempBuff); // float_val, min_width, digits_after_decimal, char_buffer
+        dtostrf(battLevel, 1, 0, battLevelBuff);
+        
+        // Use IMEI as device ID in this example:
+        sprintf(URL, "http://dweet.io/dweet/for/%s?temp=%s&batt=%s", imei, tempBuff, battLevelBuff);
+
+        if (!fona.postData("GET", URL))
           Serial.println(F("Failed to post data to website..."));
           break;
       }
