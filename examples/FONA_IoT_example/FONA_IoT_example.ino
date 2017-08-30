@@ -1,12 +1,13 @@
 /* This code is an example FONA sketch for either 2G or 3G that sends some data to dweet.io
- *  every time you press the button. It uses the IMEI number (which is globally unique) to
- *  generate a device ID for dweet.io so that the user doesn't have to assign an ID, allowing
- *  the user to upload the same code for multiple devices. Additionally, for AVR-based MCU's
- *  this code puts the MCU to sleep to conserve power.
+ *  every time you press the reset button or wake up the MCU from its sleep. It uses the IMEI
+ *  number (which is globally unique) to generate a device ID for the cloud API (dweet.io)
+ *  so that the user doesn't have to manually assign an ID, allowing the user to upload the
+ *  same code for multiple devices. Additionally, for AVR-based MCU's this code puts the
+ *  MCU to sleep at the end to conserve power.
  *  
- *  Github fork: https://github.com/ArduinoFanBoy/Adafruit_FONA
+ *  Github fork: https://github.com/botletics/Adafruit_FONA
  *  
- *  Written by: Timothy Woo
+ *  Written by: Timothy Woo (botletics.com)
  *  Last Updated: 8/20/2017
   */
 
@@ -101,7 +102,8 @@ void setup() {
   //fona.setGPRSNetworkSettings(F("your APN"), F("your username"), F("your password"));
   //fona.setGPRSNetworkSettings(F("phone"); // This worked fine for a standard AT&T 3G SIM card (US)
   //fona.setGPRSNetworkSettings(F("m2m.com.attz")); // Might need to use this for AT&T IoT SIM card (data only, US)
-  fona.setGPRSNetworkSettings(F("wholesale")); // For Ting SIM card (sold on Adafruit site)
+  //fona.setGPRSNetworkSettings(F("wholesale")); // For Ting SIM card (sold on Adafruit site)
+  //fona.setGPRSNetworkSettings(F("M2Mglobal")); // T-Mobile IoT SIM card
 
   // Optionally configure HTTP gets to follow redirects over SSL.
   // Default is not to follow SSL redirects, however if you uncomment
@@ -134,17 +136,27 @@ void loop() {
   Serial.println(F("Enabled GPRS!"));
 
   // Post something like temperature and battery level to the web API
-  while (!fona.postData(imei, temperature, battLevel)) { // Use IMEI as device ID
+  // Construct URL and post the data to the web API
+  char URL[150]; // Make sure this is long enough for your request URL
+  char tempBuff[16];
+  char battLevelBuff[16];
+
+  // Format the floating point numbers as needed
+  dtostrf(temperature, 1, 0, tempBuff); // float_val, min_width, digits_after_decimal, char_buffer
+  dtostrf(battLevel, 1, 0, battLevelBuff);
+
+  // Use IMEI as device ID in the example below
+  sprintf(URL, "http://dweet.io/dweet/for/%s?temp=%s&batt=%s", imei, tempBuff, battLevelBuff);
+  
+  if (!fona.postData("GET", URL)) {
     Serial.println(F("Failed to post data, retrying..."));
-    delay(2000); // Wait 2s before trying again
   }
-  Serial.println(F("Successfully posted data!"));
 
   // Disable GPRS
   if (!fona.enableGPRS(false)) Serial.println(F("Failed to disable GPRS"));
 
-  // Shut down the FONA after the phone hangs up
-  if (!fona.powerDown()) Serial.println(F("FONA failed to power down...")); // AT command method is preferable
+  // Power off FONA
+  if (!fona.powerDown()) Serial.println(F("Failed to power down FONA!"));
   
   // Alternative to the AT command method above:
   // If your FONA has a PWR_key pin connected to your MCU, you can pulse the PWR_key
@@ -153,10 +165,7 @@ void loop() {
 //  delay(600); // Minimum of 64ms to turn on and 500ms to turn off for FONA3G. Check spec sheet for other types
 //  digitalWrite(PWR_KEY, HIGH);
   
-  // Blink LED once and shut down the MCU
-  digitalWrite(LED, HIGH);
-  delay(100);
-  digitalWrite(LED, LOW);
+  // Shut down the MCU
   MCU_powerDown();
 }
 
