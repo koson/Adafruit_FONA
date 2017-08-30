@@ -183,7 +183,7 @@ boolean Adafruit_FONA::getADCVoltage(uint16_t *v) {
 
 /* Powers down the SIM800 */
 boolean Adafruit_FONA::powerDown(void) {
-  if (! sendCheckReply(F("AT+CPOWD=1"), ok_reply)) // Normal power off
+  if (! sendCheckReply(F("AT+CPOWD=1"), F("NORMAL POWER DOWN"))) // Normal power off
     return false;
 
   return true;
@@ -1215,6 +1215,9 @@ boolean Adafruit_FONA::enableGPRS(boolean onoff) {
     if (! sendCheckReply(F("AT+CIICR"), ok_reply, 10000))
       return false;
 
+  	// Check IP address to make sure it's connected
+  	getReply(F("AT+SAPBR=2,1"), (uint16_t)10000);
+
   } else {
     // disconnect all sockets
     if (! sendCheckReply(F("AT+CIPSHUT"), F("SHUT OK"), 20000))
@@ -1232,21 +1235,8 @@ boolean Adafruit_FONA::enableGPRS(boolean onoff) {
 }
 
 /********************************* SIM800 2G HTTP FUNCTION *********************************/
-boolean Adafruit_FONA::postData(const char *deviceID, float number, int battLevel) {
-  // Need to open socket/enable GPRS before using this function
-
-  char URL[100];
-  char numBuff[16];
-  char battLevelBuff[16];
-
-  dtostrf(number, 2, 2, numBuff); // float_val, min_width, digits_after_decimal, char_buffer
-  // Serial.print("numBuff = "); Serial.println(numBuff); // Debug
-
-  dtostrf(battLevel, 1, 0, battLevelBuff); // Battery level percentage
-  // Serial.print("battLevelBuff = "); Serial.println(battLevelBuff); // Debug
-
-  sprintf(URL, "dweet.io/dweet/for/%s?temp=%s&batt=%s", deviceID, numBuff, battLevel);
-  // Serial.print("URL = "); Serial.println(URL); // Debug
+boolean Adafruit_FONA::postData(const char *request_type, const char *URL) {
+  // NOTE: Need to open socket/enable GPRS before using this function
 
   // Initialize HTTP service
   if (! sendCheckReply(F("AT+HTTPINIT"), ok_reply, 10000))
@@ -1262,13 +1252,25 @@ boolean Adafruit_FONA::postData(const char *deviceID, float number, int battLeve
   if (! sendCheckReply(auxStr, ok_reply, 10000))
     return false;
 
-  // Specify GET request
-  if (! sendCheckReply(F("AT+HTTPACTION=0"), ok_reply, 10000))
+  // Perform request based on specified request type
+  if (request_type == "GET") {
+  	if (! sendCheckReply(F("AT+HTTPACTION=0"), ok_reply, 10000))
     return false;
+  }
+  else if (request_type == "PUT") {
+  	if (! sendCheckReply(F("AT+HTTPACTION=1"), ok_reply, 10000))
+    return false;
+  }
+  else if (request_type == "HEAD") {
+  	if (! sendCheckReply(F("AT+HTTPACTION=2"), ok_reply, 10000))
+    return false;
+  }
 
   // Read HTTP server response
-  if (! sendCheckReply(F("AT+HTTPREAD"), "+HTTPREAD:DATA,", 10000))
+  if (! sendCheckReply(F("AT+HTTPREAD"), ok_reply, 10000))
     return false;
+
+  delay(2000); // Delay at least around 1500ms for AT+HTTPTERM to run properly
 
   // Terminate HTTP service
   if (! sendCheckReply(F("AT+HTTPTERM"), ok_reply, 10000))
@@ -1340,22 +1342,10 @@ boolean Adafruit_FONA_3G::enableGPRS(boolean onoff) {
 }
 
 /********************************* 3G HTTPS FUNCTION *********************************/
-boolean Adafruit_FONA_3G::postData(const char *deviceID, float number, int battLevel) {
-  // Need to open socket/enable GPRS before using this function
+boolean Adafruit_FONA_3G::postData(const char *request) {
+  // NOTE: Need to open socket/enable GPRS before using this function
 
-  char request[100];
-  char numBuff[16];
-  char battLevelBuff[16];
-
-  dtostrf(number, 2, 2, numBuff); // float_val, min_width, digits_after_decimal, char_buffer
-  // Serial.print("numBuff = "); Serial.println(numBuff); // Debug
-
-  dtostrf(battLevel, 1, 0, battLevelBuff); // Battery level percentage
-  // Serial.print("battLevelBuff = "); Serial.println(battLevelBuff); // Debug
-
-  sprintf(request, "GET /dweet/for/%s?temp=%s&batt=%s HTTP/1.1\r\nHost: dweet.io\r\nContent-Length: 0\r\n\r\n", deviceID, numBuff, battLevel);
-  // sprintf(request, "GET /dweet/for/%s?temp=%s HTTP/1.1\r\nHost: dweet.io\r\nContent-Length: 0\r\n\r\n", deviceID, temperature);
-  // Serial.print("request = "); Serial.println(request); // Debug
+  // Sample request URL: "GET /dweet/for/{deviceID}?temp={temp}&batt={batt} HTTP/1.1\r\nHost: dweet.io\r\nContent-Length: 0\r\n\r\n"
 
   // Start HTTPS stack
   if (! sendCheckReply(F("AT+CHTTPSSTART"), ok_reply, 10000))
