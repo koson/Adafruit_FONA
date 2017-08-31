@@ -148,7 +148,7 @@ void loop() {
   // Use IMEI as device ID in the example below
   sprintf(URL, "http://dweet.io/dweet/for/%s?temp=%s&batt=%s", imei, tempBuff, battLevelBuff);
   
-  if (!fona.postData("GET", URL)) {
+  if (!fona.postData("GET", URL, "")) {
     Serial.println(F("Failed to post data, retrying..."));
   }
 
