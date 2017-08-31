@@ -805,6 +805,9 @@ void loop() {
         break;
        }
     case '2': {
+        // Press "G" to enable GPRS before using this function!
+        // Also make sure to properly set up the bearer credentials (APN settings)
+      
         // Post data to website via 2G
         float temperature = analogRead(A0)*1.23; // Change this to suit your needs
         uint16_t battLevel = 87; // Just for testing. Use the read battery function instead
@@ -841,6 +844,9 @@ void loop() {
         break;
       }
     case '3': {
+        // Press "G" to enable GPRS before using this function!
+        // Also make sure to properly set up the bearer credentials (APN settings)
+      
         // Post data to website via 3G
         float temperature = analogRead(A0)*1.23; // Change this to suit your needs
         uint16_t battLevel = 87; // Just for testing. Use the read battery function instead
