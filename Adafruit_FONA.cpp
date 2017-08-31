@@ -1235,7 +1235,7 @@ boolean Adafruit_FONA::enableGPRS(boolean onoff) {
 }
 
 /********************************* SIM800 2G HTTP FUNCTION *********************************/
-boolean Adafruit_FONA::postData(const char *request_type, const char *URL) {
+boolean Adafruit_FONA::postData(const char *request_type, const char *URL, const char *body) {
   // NOTE: Need to open socket/enable GPRS before using this function
 
   // Initialize HTTP service
@@ -1257,7 +1257,21 @@ boolean Adafruit_FONA::postData(const char *request_type, const char *URL) {
   	if (! sendCheckReply(F("AT+HTTPACTION=0"), ok_reply, 10000))
     return false;
   }
-  else if (request_type == "PUT") {
+  else if (request_type == "POST") {
+  	if (! sendCheckReply(F("AT+HTTPPARA=\"CONTENT\",\"application/json\""), ok_reply, 10000))
+    return false;
+	
+	sprintf(auxStr, "AT+HTTPDATA=%d,10000", strlen(body));
+	if (! sendCheckReply(auxStr, "DOWNLOAD", 10000))
+    return false;
+
+	if (! sendCheckReply(body, ok_reply, 10000))
+    return false;
+	
+	// sprintf(auxStr, "AT+%s", data);
+	// if (! sendCheckReply(auxStr, ok_reply, 10000))
+ //    return false;
+
   	if (! sendCheckReply(F("AT+HTTPACTION=1"), ok_reply, 10000))
     return false;
   }
@@ -1342,7 +1356,7 @@ boolean Adafruit_FONA_3G::enableGPRS(boolean onoff) {
 }
 
 /********************************* 3G HTTPS FUNCTION *********************************/
-boolean Adafruit_FONA_3G::postData(const char *request) {
+boolean Adafruit_FONA_3G::postData3G(const char *request) {
   // NOTE: Need to open socket/enable GPRS before using this function
 
   // Sample request URL: "GET /dweet/for/{deviceID}?temp={temp}&batt={batt} HTTP/1.1\r\nHost: dweet.io\r\nContent-Length: 0\r\n\r\n"
