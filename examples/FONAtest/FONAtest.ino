@@ -106,6 +106,7 @@ void setup() {
   //fona.setGPRSNetworkSettings(F("your APN"), F("your username"), F("your password"));
   //fona.setGPRSNetworkSettings(F("phone"); // This worked fine for a standard AT&T 3G SIM card (US)
   //fona.setGPRSNetworkSettings(F("m2m.com.attz")); // Might need to use this for AT&T IoT SIM card (data only, US)
+  //fona.setGPRSNetworkSettings(F("M2Mglobal"));
 
   // Optionally configure HTTP gets to follow redirects over SSL.
   // Default is not to follow SSL redirects, however if you uncomment
@@ -808,22 +809,36 @@ void loop() {
         float temperature = analogRead(A0)*1.23; // Change this to suit your needs
         uint16_t battLevel = 87; // Just for testing. Use the read battery function instead
 
-        // Construct URL and post the data to the web API
         // Create char buffers for the floating point numbers for sprintf
-        char URL[150]; // Make sure this buffer is long enough for your request URL
+        // Make sure these buffers are long enough for your request URL
+        char URL[150];
+        char body[100];
         char tempBuff[16];
         char battLevelBuff[16];
       
         // Format the floating point numbers as needed
         dtostrf(temperature, 1, 2, tempBuff); // float_val, min_width, digits_after_decimal, char_buffer
         dtostrf(battLevel, 1, 0, battLevelBuff);
+
+        // Construct the appropriate URL's and body, depending on request type
+        // Use IMEI as device ID for this example
         
-        // Use IMEI as device ID in this example:
+        // GET request
         sprintf(URL, "http://dweet.io/dweet/for/%s?temp=%s&batt=%s", imei, tempBuff, battLevelBuff);
 
-        if (!fona.postData("GET", URL))
-          Serial.println(F("Failed to post data to website..."));
-          break;
+        if (!fona.postData("GET", URL, "")) // No body field required
+          Serial.println(F("Failed to complete HTTP GET request..."));
+        
+        // POST request
+        /*
+        sprintf(URL, "http://dweet.io/dweet/for/%s", imei);
+        sprintf(body, "{\"temp\":%s,\"batt\":%s}", tempBuff, battLevelBuff);
+        
+        if (!fona.postData("POST", URL, body))
+          Serial.println(F("Failed to complete HTTP POST request..."));
+        */
+      
+        break;
       }
     case '3': {
         // Post data to website via 3G
@@ -843,9 +858,10 @@ void loop() {
         // Use IMEI as device ID in this example:
         sprintf(URL, "GET /dweet/for/%s?temp=%s&batt=%s HTTP/1.1\r\nHost: dweet.io\r\nContent-Length: 0\r\n\r\n", imei, tempBuff, battLevelBuff);
 
-        if (!fona.postData(URL))
+        if (!fona.postData3G(URL))
           Serial.println(F("Failed to post data to website..."));
-          break;
+          
+        break;
       }
     /*****************************************/
 
