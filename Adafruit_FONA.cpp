@@ -1383,13 +1383,9 @@ boolean Adafruit_FONA_3G::postData3G(const char *request) {
   if (! sendCheckReply(F("AT+CHTTPSSEND"), ok_reply, 10000))
     return false;
 
-//   Receive HTTPS response. Note: this didn't work for me
-//   if (! sendCheckReply(F("AT+HTTPSSEND?"), "+CHTTPSSEND: ", 10000)) // Receive HTTPS response.
-//     return false;
-//   if (! sendCheckReply(F("AT+CHTTPSRECV=1"), "+CHTTPSRECV: DATA,", 10000)) // Receive HTTPS response.
-//     return false;
-// if (! sendCheckReply(F("AT+CHTTPSRECV?"), "+CHTTPSRECV: LEN,", 10000)) // Receive HTTPS response.
-//     return false;
+  // Receive HTTPS response.
+  if (! sendCheckReply(F("AT+CHTTPSRECV=1"), ok_reply, 10000))
+    return false;
 
   // Close HTTP/HTTPS Session
   if (! sendCheckReply(F("AT+CHTTPSCLSE"), ok_reply, 10000))
