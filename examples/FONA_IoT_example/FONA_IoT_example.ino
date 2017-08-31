@@ -16,16 +16,20 @@
 #include <avr/power.h>
 
 // Default
-#define FONA_RX 2
-#define FONA_TX 3
-#define FONA_RST 4
-//#define PWR_KEY 5 // Optional
+//#define FONA_RX 2
+//#define FONA_TX 3
+//#define FONA_RST 4
+//#define PWR_KEY 5
 
 // For Feather FONA (SIM800) specifically
-//#define FONA_RX  9
-//#define FONA_TX  8
-//#define FONA_RST 4
-//#define FONA_RI  7
+#define FONA_RX  9
+#define FONA_TX  8
+#define FONA_RST 4
+#define FONA_RI  7
+// For the PWR_KEY pin, use any available digital pin, but cut the
+// PWRKEY trace on the Feather FONA for this to work. YOu can't sleep
+// the SIM800 if the trace isn't cut.
+#define PWR_KEY 0
 
 // Using SoftwareSerial:
 #include <SoftwareSerial.h>
@@ -46,24 +50,17 @@ char replybuffer[255]; // Large buffer for replies
 uint8_t type;
 uint16_t VBAT = 0; // Battery voltage
 uint16_t battLevel = 0; // Battery level (percentage)
-const byte LED = 13;
 const int phoneNum = 1234567890; // Phone number to call
 
 void setup() {
   Serial.begin(115200);
 
-  pinMode(LED, OUTPUT);
-
-  // Flash LED twice and turn on the FONA
-  digitalWrite(LED, HIGH);
-  delay(50);
-  digitalWrite(LED, LOW);
-  delay(50);
-  digitalWrite(LED, HIGH);
-  delay(50);
-  digitalWrite(LED, LOW);
+  pinMode(PWR_KEY, OUTPUT);
+  digitalWrite(PWR_KEY, LOW);
+  delay(1050); // Pull low at least 1s to turn on SIM800
+  digitalWrite(PWR_KEY, HIGH);
   
-  fonaSerial->begin(4800); // This function includes a reset, which turns on the FONA even if it was asleep
+  fonaSerial->begin(4800);
   if (! fona.begin(*fonaSerial)) {
     Serial.println(F("Couldn't find FONA"));
     while (1);
