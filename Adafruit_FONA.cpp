@@ -1257,21 +1257,21 @@ boolean Adafruit_FONA::postData(const char *request_type, const char *URL, const
   	if (! sendCheckReply(F("AT+HTTPACTION=0"), ok_reply, 10000))
     return false;
   }
-  else if (request_type == "POST") {
+  else if (request_type == "POST" && strlen(body) > 0) { // POST with content body
   	if (! sendCheckReply(F("AT+HTTPPARA=\"CONTENT\",\"application/json\""), ok_reply, 10000))
     return false;
-	
+
 	sprintf(auxStr, "AT+HTTPDATA=%d,10000", strlen(body));
 	if (! sendCheckReply(auxStr, "DOWNLOAD", 10000))
     return false;
 
 	if (! sendCheckReply(body, ok_reply, 10000))
     return false;
-	
-	// sprintf(auxStr, "AT+%s", data);
-	// if (! sendCheckReply(auxStr, ok_reply, 10000))
- //    return false;
 
+  	if (! sendCheckReply(F("AT+HTTPACTION=1"), ok_reply, 10000))
+    return false;
+  }
+  else if (request_type == "POST" && strlen(body) == 0) { // POST with query parameters
   	if (! sendCheckReply(F("AT+HTTPACTION=1"), ok_reply, 10000))
     return false;
   }
@@ -1280,7 +1280,7 @@ boolean Adafruit_FONA::postData(const char *request_type, const char *URL, const
     return false;
   }
 
-  // Read HTTP server response
+  // Read server response
   if (! sendCheckReply(F("AT+HTTPREAD"), ok_reply, 10000))
     return false;
 
