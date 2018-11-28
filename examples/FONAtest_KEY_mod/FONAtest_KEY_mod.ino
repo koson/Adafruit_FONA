@@ -27,16 +27,10 @@ the commented section below at the end of the setup() function.
 */
 #include "Adafruit_FONA.h"
 
-// Default
 #define FONA_RX 2
 #define FONA_TX 3
 #define FONA_RST 4
-
-// For FONA800 specifically
-//#define FONA_RX  9
-//#define FONA_TX  8
-//#define FONA_RST 4
-//#define FONA_RI  7
+#define FONA_KEY 8
 
 // this is a large buffer for replies
 char replybuffer[255];
@@ -53,15 +47,18 @@ SoftwareSerial *fonaSerial = &fonaSS;
 
 // Use this for FONA 800 and 808s
 Adafruit_FONA fona = Adafruit_FONA(FONA_RST);
-// Use this one for FONA 3G. Also run the "FONA3G_setBaud" example or it may not work.
+// Use this one for FONA 3G
 //Adafruit_FONA_3G fona = Adafruit_FONA_3G(FONA_RST);
 
 uint8_t readline(char *buff, uint8_t maxbuff, uint16_t timeout = 0);
+
 uint8_t type;
-char imei[16] = {0}; // MUST use a 16 character buffer for IMEI!
 
 void setup() {
   while (!Serial);
+
+  pinMode(FONA_KEY, OUTPUT);
+  digitalWrite(FONA_KEY, HIGH);
 
   Serial.begin(115200);
   Serial.println(F("FONA basic test"));
@@ -93,6 +90,7 @@ void setup() {
   }
   
   // Print module IMEI number.
+  char imei[15] = {0}; // MUST use a 16 character buffer for IMEI!
   uint8_t imeiLen = fona.getIMEI(imei);
   if (imeiLen > 0) {
     Serial.print("Module IMEI: "); Serial.println(imei);
@@ -104,9 +102,6 @@ void setup() {
   // and password values.  Username and password are optional and
   // can be removed, but APN is required.
   //fona.setGPRSNetworkSettings(F("your APN"), F("your username"), F("your password"));
-  //fona.setGPRSNetworkSettings(F("phone"); // This worked fine for a standard AT&T 3G SIM card (US)
-  //fona.setGPRSNetworkSettings(F("m2m.com.attz")); // Might need to use this for AT&T IoT SIM card (data only, US)
-  //fona.setGPRSNetworkSettings(F("M2Mglobal"));
 
   // Optionally configure HTTP gets to follow redirects over SSL.
   // Default is not to follow SSL redirects, however if you uncomment
@@ -131,6 +126,8 @@ void printMenu(void) {
   Serial.println(F("[e] set External audio (FONA800 & 808)"));
   Serial.println(F("[T] play audio Tone"));
   Serial.println(F("[P] PWM/Buzzer out (FONA800 & 808)"));
+  Serial.println(F("[Z] power off with Key"));
+  Serial.println(F("[z] power on with Key"));
 
   // FM (SIM800 only!)
   Serial.println(F("[f] tune FM radio (FONA800)"));
@@ -164,10 +161,6 @@ void printMenu(void) {
   Serial.println(F("[l] Query GSMLOC (GPRS)"));
   Serial.println(F("[w] Read webpage (GPRS)"));
   Serial.println(F("[W] Post to website (GPRS)"));
-  // The following option below posts dummy data to dweet.io for demonstration purposes only. See the 
-  // FONA_IoT_example sketch for an actual application of this function.
-  Serial.println(F("[2] Post to dweet.io via 2G (GPRS)")); // Tested and works on FONA800
-  Serial.println(F("[3] Post to dweet.io via 3G (GPRS)")); // For FONA 3G only
 
   // GPS
   if ((type == FONA3G_A) || (type == FONA3G_E) || (type == FONA808_V1) || (type == FONA808_V2)) {
@@ -203,6 +196,23 @@ void loop() {
         break;
       }
 
+    case 'Z': {
+        digitalWrite(FONA_KEY, LOW);
+        delay(2000);
+        digitalWrite(FONA_KEY, HIGH);
+        delay(3000);
+        break;
+      }
+    case 'z': {
+        digitalWrite(FONA_KEY, LOW);
+        delay(2000);
+        digitalWrite(FONA_KEY, HIGH);
+        delay(3000);
+        if (! fona.begin(*fonaSerial)) {
+          Serial.println(F("Couldn't find FONA"));
+        }
+        break;
+      }
     case 'a': {
         // read the ADC
         uint16_t adc;
@@ -735,7 +745,7 @@ void loop() {
 
         flushSerial();
         Serial.println(F("NOTE: in beta! Use small webpages to read!"));
-        Serial.println(F("URL to read (e.g. wifitest.adafruit.com/testwifi/index.html):"));
+        Serial.println(F("URL to read (e.g. www.adafruit.com/testwifi/index.html):"));
         Serial.print(F("http://")); readline(url, 79);
         Serial.println(url);
 
@@ -802,68 +812,6 @@ void loop() {
         }
         Serial.println(F("\n****"));
         fona.HTTP_POST_end();
-        break;
-       }
-    case '2': {
-        // Post data to website via 2G
-        float temperature = analogRead(A0)*1.23; // Change this to suit your needs
-        uint16_t battLevel = 87; // Just for testing. Use the read battery function instead
-
-        // Create char buffers for the floating point numbers for sprintf
-        // Make sure these buffers are long enough for your request URL
-        char URL[150];
-        char body[100];
-        char tempBuff[16];
-        char battLevelBuff[16];
-      
-        // Format the floating point numbers as needed
-        dtostrf(temperature, 1, 2, tempBuff); // float_val, min_width, digits_after_decimal, char_buffer
-        dtostrf(battLevel, 1, 0, battLevelBuff);
-
-        // Construct the appropriate URL's and body, depending on request type
-        // Use IMEI as device ID for this example
-        
-        // GET request
-        sprintf(URL, "http://dweet.io/dweet/for/%s?temp=%s&batt=%s", imei, tempBuff, battLevelBuff);
-
-        if (!fona.postData("GET", URL, "")) // No body field required
-          Serial.println(F("Failed to complete HTTP GET request..."));
-        
-        // POST request
-        /*
-        sprintf(URL, "http://dweet.io/dweet/for/%s", imei);
-        sprintf(body, "{\"temp\":%s,\"batt\":%s}", tempBuff, battLevelBuff);
-        
-        if (!fona.postData("POST", URL, body))
-          Serial.println(F("Failed to complete HTTP POST request..."));
-        */
-      
-        break;
-      }
-    case '3': {
-        // For this to work, make sure you uncomment line 57 to select FONA 3G!
-        // Also uncomment the line "if (!fona.postData3G(URL))" below
-        
-        // Post data to website via 3G
-        float temperature = analogRead(A0)*1.23; // Change this to suit your needs
-        uint16_t battLevel = 87; // Just for testing. Use the read battery function instead
-
-        // Construct URL and post the data to the web API
-        // Create char buffers for the floating point numbers for sprintf
-        char URL[150]; // Make sure this buffer is long enough for your request URL
-        char tempBuff[16];
-        char battLevelBuff[16];
-      
-        // Format the floating point numbers as needed
-        dtostrf(temperature, 1, 2, tempBuff); // float_val, min_width, digits_after_decimal, char_buffer
-        dtostrf(battLevel, 1, 0, battLevelBuff);
-        
-        // Use IMEI as device ID in this example:
-        sprintf(URL, "GET /dweet/for/%s?temp=%s&batt=%s HTTP/1.1\r\nHost: dweet.io\r\nContent-Length: 0\r\n\r\n", imei, tempBuff, battLevelBuff);
-
-//        if (!fona.postData3G(URL)) // Uncomment this if you have FONA 3G!
-          Serial.println(F("Failed to post data to website..."));
-        
         break;
       }
     /*****************************************/
